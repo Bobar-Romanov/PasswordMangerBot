@@ -1,19 +1,44 @@
 import mysql.connector
+import os
+import logging
+
+logging.basicConfig(filename='app.log', format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+
+host = os.getenv('MYSQL_HOST')
+user = os.getenv('MYSQL_USER')
+password = os.getenv('MYSQL_PASSWORD')
+database = os.getenv('MYSQL_DATABASE')
 
 
 class PasswordsDB:
     def __init__(self):
-        self.mydb = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="root",
-            database="password_manager_db"
-        )
+        self.mydb = None
+        try:
+            self.mydb = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password
+            )
+        except Exception as e:
+            logging.error(e)
+
+        crs = self.mydb.cursor()
+        crs.execute("CREATE DATABASE IF NOT EXISTS password_manager_db")
+
+        try:
+            self.mydb = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database
+            )
+        except Exception as e:
+            logging.error(e)
+
+
         self.cursor = self.mydb.cursor()
-        self.create_db()
         self.create_table()
-    def create_db(self):
-        self.cursor.execute("CREATE DATABASE IF NOT EXISTS password_manager_db")
+
     def create_table(self):
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS passwords (id INT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, password_name "
@@ -27,6 +52,7 @@ class PasswordsDB:
             self.mydb.commit()
             return True
         except Exception as e:
+            logging.error(e)
             return False
 
     def check_password_name(self, user_id, password_name):
@@ -57,4 +83,5 @@ class PasswordsDB:
             self.mydb.commit()
             return True
         except Exception as e:
+            logging.error(e)
             return False

@@ -1,9 +1,13 @@
 import telebot
 import time
+import os
+import asyncio
+from service import Service
 from passwords_db import PasswordsDB
 
+bot = telebot.TeleBot(os.getenv('PMBTOKEN'))
 db = PasswordsDB()
-bot = telebot.TeleBot('6232290157:AAGCtDeM_57GSY3R25pKu9xNjjbV8yWbhJU')
+service = Service(bot)
 
 
 @bot.message_handler(commands=['start'])
@@ -23,7 +27,7 @@ def set_password(message):
 
 def set_password_name(message):
     if message.text is None or message.text.startswith("/"):
-        bot.send_message(message.chat.id, text="Вы ввели некорректное значение")
+        bot.send_message(message.chat.id, "Вы ввели некорректное значение")
         return
     if db.check_password_name(message.from_user.id, message.text):
         bot.send_message(message.chat.id, "Для данного сервиса уже сохранён пароль")
@@ -35,11 +39,13 @@ def set_password_name(message):
 
 def set_login(message, password_name):
     if message.text is None or message.text.startswith("/"):
-        bot.send_message(message.chat.id, text="Вы ввели некорректное значение")
+        bot.send_message(message.chat.id, "Вы ввели некорректное значение")
         return
     login = message.text
     bot.send_message(message.chat.id, "Введите пароль:")
     bot.register_next_step_handler(message, save_password, password_name, login)
+   # asyncio.new_event_loop().run_until_complete(
+    #    service.delete_after_delay(message, float(os.getenv('DELAY_FOR_DELETE')), asyncio.new_event_loop()))
 
 
 def save_password(message, password_name, login):
@@ -49,6 +55,8 @@ def save_password(message, password_name, login):
         bot.send_message(message.chat.id, "Пароль успешно сохранен!")
     else:
         bot.send_message(message.chat.id, "Что-то пошло не так...")
+    asyncio.new_event_loop().run_until_complete(
+        service.delete_messages(message, float(os.getenv('DELAY_FOR_DELETE')), asyncio.new_event_loop()))
 
 
 @bot.message_handler(commands=['get'])
@@ -59,7 +67,7 @@ def get_password(message):
 
 def get_password_name(message):
     if message.text is None or message.text.startswith("/"):
-        bot.send_message(message.chat.id, text="Вы ввели некорректное значение")
+        bot.send_message(message.chat.id, "Вы ввели некорректное значение")
         return
     if not db.check_password_name(message.from_user.id, message.text):
         bot.send_message(message.chat.id, "Для данного сервиса нет сохраннёных паролей")
@@ -69,8 +77,8 @@ def get_password_name(message):
     if result:
         message_text = f"Логин: {result[0]}\nПароль: {result[1]}"
         message_to_delete = bot.send_message(message.chat.id, message_text)
-        time.sleep(600)
-        bot.delete_message(chat_id=message.chat.id, message_id=message_to_delete.message_id)
+        asyncio.new_event_loop().run_until_complete(
+            service.delete_messages(message_to_delete, float(os.getenv('DELAY_FOR_DELETE')), asyncio.new_event_loop()))
     else:
         bot.send_message(message.chat.id, "Что-то пошло не так...")
 
